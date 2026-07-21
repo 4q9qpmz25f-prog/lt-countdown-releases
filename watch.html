@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LT-Countdown — Remoto</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body,
+      #root {
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background: #000;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        overflow: hidden;
+      }
+      .display {
+        position: relative;
+        height: 100vh;
+        cursor: default;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      .display-title,
+      .display-datetime {
+        opacity: 0.7;
+        text-align: center;
+      }
+      .display-clock {
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+      }
+      .display-clock.blink {
+        animation: blink 1s steps(1) infinite;
+      }
+      .display-clock.flash {
+        animation: flash 0.4s steps(1) infinite;
+      }
+      @keyframes blink {
+        50% {
+          opacity: 0.25;
+        }
+      }
+      @keyframes flash {
+        50% {
+          opacity: 0;
+        }
+      }
+      .display-message {
+        border-radius: 12px;
+        padding: 16px 32px;
+        text-align: center;
+      }
+      .display-progress-track {
+        overflow: hidden;
+      }
+      .display-progress-fill {
+        height: 100%;
+        transition: width 0.9s linear;
+      }
+      .positioned {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        white-space: nowrap;
+      }
+      .status {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #888;
+        font-family: -apple-system, sans-serif;
+        font-size: 16px;
+        text-align: center;
+        padding: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"><div class="status">In attesa di connessione…</div></div>
+
+    <script type="module">
+      import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+      // Stessi valori pubblici incorporati nell'app (l'anon key è pensata per
+      // essere pubblica). Nessun dato sensibile passa da questo canale: solo
+      // lo stato del countdown che l'utente ha scelto di condividere.
+      const SUPABASE_URL = 'https://premabvrnfmjgeswinyk.supabase.co'
+      const SUPABASE_ANON_KEY =
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByZW1hYnZybmZtamdlc3dpbnlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1Nzk0OTEsImV4cCI6MjEwMDE1NTQ5MX0.rFe3bkBj8hgWBWtkATyEsa9lYyYaymzFfNSp6cnxRYM'
+
+      const root = document.getElementById('root')
+      const room = new URLSearchParams(location.search).get('room')
+
+      if (!room) {
+        root.innerHTML = '<div class="status">Link non valido: manca il codice stanza (?room=...).</div>'
+      } else {
+        const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        const channel = client.channel(`room:${room}`)
+        channel.on('broadcast', { event: 'state' }, ({ payload }) => render(payload))
+        channel.subscribe((status) => {
+          if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+            root.innerHTML = '<div class="status">Connessione non riuscita. Ricarica la pagina.</div>'
+          }
+        })
+      }
+
+      // --- Stessa logica di formattazione/soglie di src/renderer/src/shared ---
+
+      function pad(n) {
+        return n.toString().padStart(2, '0')
+      }
+
+      function formatClockCustom(totalSeconds, opts) {
+        const sign = totalSeconds < 0 ? '+' : ''
+        const abs = Math.abs(totalSeconds)
+        const s = Math.floor(abs % 60)
+        if (!opts.showHours) {
+          const totalMinutes = Math.floor(abs / 60)
+          return opts.showSeconds ? `${sign}${totalMinutes}:${pad(s)}` : `${sign}${totalMinutes}m`
+        }
+        const h = Math.floor(abs / 3600)
+        const m = Math.floor((abs % 3600) / 60)
+        if (!opts.showSeconds) return h > 0 ? `${sign}${h}:${pad(m)}` : `${sign}${pad(m)}`
+        return h > 0 ? `${sign}${h}:${pad(m)}:${pad(s)}` : `${sign}${pad(m)}:${pad(s)}`
+      }
+
+      function formatTimeOfDay(date, showSeconds) {
+        const parts = [pad(date.getHours()), pad(date.getMinutes())]
+        if (showSeconds) parts.push(pad(date.getSeconds()))
+        return parts.join(':')
+      }
+
+      function currentColor(state) {
+        const { settings } = state
+        if (state.isOvertime) return settings.colorOvertime
+        const activeCue = state.cues.find((c) => c.id === state.activeCueId)
+        const warning1Sec = activeCue?.warning1Sec ?? 120
+        const warning2Sec = activeCue?.warning2Sec ?? 30
+        if (state.remainingSec <= warning2Sec) return settings.colorWarning2
+        if (state.remainingSec <= warning1Sec) return settings.colorWarning1
+        return settings.colorNormal
+      }
+
+      function currentAnimation(state) {
+        const { settings } = state
+        if (state.isOvertime) return settings.overtimeAnimation
+        const activeCue = state.cues.find((c) => c.id === state.activeCueId)
+        const warning1Sec = activeCue?.warning1Sec ?? 120
+        const warning2Sec = activeCue?.warning2Sec ?? 30
+        if (state.remainingSec <= warning2Sec) return settings.warning2Animation
+        if (state.remainingSec <= warning1Sec) return settings.warning1Animation
+        return 'none'
+      }
+
+      function progressFraction(state) {
+        const cue = state.cues.find((c) => c.id === state.activeCueId)
+        if (!cue || cue.durationSec <= 0) return 0
+        const elapsed = cue.durationSec - state.remainingSec
+        return Math.min(1, Math.max(0, elapsed / cue.durationSec))
+      }
+
+      // --- Resa ---
+
+      function positioned(el, extraStyle) {
+        return `position:absolute; left:${el.xPercent}%; top:${el.yPercent}%; transform:translate(-50%,-50%); white-space:nowrap; ${extraStyle ?? ''}`
+      }
+
+      let latestState = null
+
+      function render(state) {
+        latestState = state
+        draw(state)
+      }
+
+      // Ridisegna ogni secondo anche senza un nuovo broadcast, così data/ora
+      // e l'orologio (quando attivo) restano aggiornati tra un messaggio e
+      // l'altro invece di restare fermi all'ultimo stato ricevuto.
+      setInterval(() => {
+        if (latestState) draw(latestState)
+      }, 1000)
+
+      function draw(state) {
+        const { display } = state.settings
+        const activeCue = state.cues.find((c) => c.id === state.activeCueId)
+        const color = currentColor(state)
+        const animation = state.showWallClock ? 'none' : currentAnimation(state)
+        const now = new Date()
+        const progressBar = display.progressBar
+
+        let html = ''
+
+        if (display.title.visible && activeCue) {
+          html += `<div class="display-title" style="${positioned(display.title, `color:${display.title.color}; font-size:${display.title.fontVw}vw;`)}">${escapeHtml(activeCue.title)}</div>`
+        }
+
+        if (display.clock.visible) {
+          const clockText = state.showWallClock
+            ? formatTimeOfDay(now, display.clock.wallClockShowSeconds)
+            : formatClockCustom(state.remainingSec, display.clock)
+          const clockColor = state.showWallClock ? display.title.color : color
+          const animClass = animation !== 'none' ? animation : ''
+          html += `<div class="display-clock ${animClass}" style="${positioned(display.clock, `color:${clockColor}; font-size:${display.clock.fontVw}vw;`)}">${clockText}</div>`
+        }
+
+        if (display.message.visible && state.message) {
+          html += `<div class="display-message" style="${positioned(display.message, `color:${display.message.color}; background-color:${display.message.backgroundColor}; font-size:${display.message.fontVw}vw;`)}">${escapeHtml(state.message)}</div>`
+        }
+
+        if (display.date.visible) {
+          html += `<div class="display-datetime" style="${positioned(display.date, `color:${display.date.color}; font-size:${display.date.fontVw}vw;`)}">${now.toLocaleDateString('it-IT')}</div>`
+        }
+
+        if (display.time.visible) {
+          html += `<div class="display-datetime" style="${positioned(display.time, `color:${display.time.color}; font-size:${display.time.fontVw}vw;`)}">${formatTimeOfDay(now, display.time.showSeconds)}</div>`
+        }
+
+        if (progressBar.enabled) {
+          const fraction = progressFraction(state)
+          const isShrunk = progressBar.widthPercent < 100
+          const height = `calc(${progressBar.heightPx} / 1920 * 100vw)`
+          const radius = isShrunk ? height : '0'
+          const fillColor = progressBar.color || color
+          html += `
+            <div class="display-progress-track" style="position:absolute; left:${progressBar.xPercent}%; top:${progressBar.yPercent}%; width:${progressBar.widthPercent}%; height:${height}; border-radius:${radius}; transform:translate(-50%,-50%); background-color:${progressBar.trackColor};">
+              <div class="display-progress-fill" style="width:${fraction * 100}%; border-radius:${radius}; background-color:${fillColor};"></div>
+            </div>`
+        }
+
+        document.getElementById('root').innerHTML =
+          `<div class="display" style="background-color:${display.backgroundColor}">${html}</div>`
+      }
+
+      function escapeHtml(text) {
+        const div = document.createElement('div')
+        div.textContent = text
+        return div.innerHTML
+      }
+    </script>
+  </body>
+</html>
