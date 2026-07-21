@@ -196,7 +196,7 @@
         let html = ''
 
         if (display.title.visible && activeCue) {
-          html += `<div class="display-title" style="${positioned(display.title, `color:${display.title.color}; font-size:${display.title.fontVw}vw;`)}">${escapeHtml(activeCue.title)}</div>`
+          html += `<div class="display-title" style="${positioned(display.title, `color:${display.title.color}; font-size:${display.title.fontVw}vmin;`)}">${escapeHtml(activeCue.title)}</div>`
         }
 
         if (display.clock.visible) {
@@ -205,25 +205,25 @@
             : formatClockCustom(state.remainingSec, display.clock)
           const clockColor = state.showWallClock ? display.title.color : color
           const animClass = animation !== 'none' ? animation : ''
-          html += `<div class="display-clock ${animClass}" style="${positioned(display.clock, `color:${clockColor}; font-size:${display.clock.fontVw}vw;`)}">${clockText}</div>`
+          html += `<div class="display-clock ${animClass}" style="${positioned(display.clock, `color:${clockColor}; font-size:${display.clock.fontVw}vmin;`)}">${clockText}</div>`
         }
 
         if (display.message.visible && state.message) {
-          html += `<div class="display-message" style="${positioned(display.message, `color:${display.message.color}; background-color:${display.message.backgroundColor}; font-size:${display.message.fontVw}vw;`)}">${escapeHtml(state.message)}</div>`
+          html += `<div class="display-message" style="${positioned(display.message, `color:${display.message.color}; background-color:${display.message.backgroundColor}; font-size:${display.message.fontVw}vmin;`)}">${escapeHtml(state.message)}</div>`
         }
 
         if (display.date.visible) {
-          html += `<div class="display-datetime" style="${positioned(display.date, `color:${display.date.color}; font-size:${display.date.fontVw}vw;`)}">${now.toLocaleDateString('it-IT')}</div>`
+          html += `<div class="display-datetime" style="${positioned(display.date, `color:${display.date.color}; font-size:${display.date.fontVw}vmin;`)}">${now.toLocaleDateString('it-IT')}</div>`
         }
 
         if (display.time.visible) {
-          html += `<div class="display-datetime" style="${positioned(display.time, `color:${display.time.color}; font-size:${display.time.fontVw}vw;`)}">${formatTimeOfDay(now, display.time.showSeconds)}</div>`
+          html += `<div class="display-datetime" style="${positioned(display.time, `color:${display.time.color}; font-size:${display.time.fontVw}vmin;`)}">${formatTimeOfDay(now, display.time.showSeconds)}</div>`
         }
 
         if (progressBar.enabled) {
           const fraction = progressFraction(state)
           const isShrunk = progressBar.widthPercent < 100
-          const height = `calc(${progressBar.heightPx} / 1920 * 100vw)`
+          const height = `calc(${progressBar.heightPx} / 1920 * 100vmin)`
           const radius = isShrunk ? height : '0'
           const fillColor = progressBar.color || color
           html += `
