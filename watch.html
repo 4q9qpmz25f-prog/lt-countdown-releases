@@ -2,8 +2,15 @@
 <html lang="it">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>LT-Countdown — Remoto</title>
+    <!-- Su iPhone Safari non esiste un vero "schermo intero" da pagina web
+         (Fullscreen API non supportata): aprendo la pagina dall'icona
+         aggiunta con "Aggiungi a Home" invece parte senza barra degli
+         indirizzi né toolbar, praticamente a schermo intero. -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <style>
       * {
         box-sizing: border-box;
@@ -81,10 +88,45 @@
         text-align: center;
         padding: 24px;
       }
+      .fullscreen-btn {
+        position: fixed;
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+        z-index: 10;
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-family: -apple-system, sans-serif;
+        font-size: 13px;
+        opacity: 0.55;
+      }
+      .fullscreen-btn:active {
+        opacity: 0.9;
+      }
+      .ios-hint {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: max(10px, env(safe-area-inset-bottom));
+        z-index: 10;
+        text-align: center;
+        color: #888;
+        font-family: -apple-system, sans-serif;
+        font-size: 12px;
+        padding: 0 16px;
+        pointer-events: none;
+      }
     </style>
   </head>
   <body>
+    <button id="fullscreenBtn" class="fullscreen-btn" hidden>⛶ Schermo intero</button>
     <div id="root"><div class="status">In attesa di connessione…</div></div>
+    <div id="iosHint" class="ios-hint" hidden>
+      Per il vero schermo intero su iPhone: tocca Condividi
+      <span aria-hidden="true">􀈂</span> → Aggiungi a Home, poi apri da lì.
+    </div>
 
     <script type="module">
       import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -95,6 +137,28 @@
       const SUPABASE_URL = 'https://premabvrnfmjgeswinyk.supabase.co'
       const SUPABASE_ANON_KEY =
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByZW1hYnZybmZtamdlc3dpbnlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1Nzk0OTEsImV4cCI6MjEwMDE1NTQ5MX0.rFe3bkBj8hgWBWtkATyEsa9lYyYaymzFfNSp6cnxRYM'
+
+      // Su iPhone Safari l'API Fullscreen non è supportata su un elemento
+      // generico: il pulsante lì non farebbe nulla, meglio mostrare il
+      // suggerimento "Aggiungi a Home" invece del pulsante inutile. Su
+      // desktop/Android/iPad la Fullscreen API funziona normalmente.
+      const isStandalone = window.navigator.standalone === true || matchMedia('(display-mode: standalone)').matches
+      const isIos = /iphone|ipod/i.test(navigator.userAgent)
+      const fullscreenBtn = document.getElementById('fullscreenBtn')
+      const iosHint = document.getElementById('iosHint')
+
+      if (isIos && !isStandalone) {
+        iosHint.hidden = false
+      } else if (document.documentElement.requestFullscreen) {
+        fullscreenBtn.hidden = false
+        fullscreenBtn.addEventListener('click', () => {
+          if (document.fullscreenElement) {
+            document.exitFullscreen()
+          } else {
+            document.documentElement.requestFullscreen().catch(() => {})
+          }
+        })
+      }
 
       const root = document.getElementById('root')
       const room = new URLSearchParams(location.search).get('room')
