@@ -138,25 +138,23 @@
         return parts.join(':')
       }
 
-      function currentColor(state) {
-        const { settings } = state
-        if (state.isOvertime) return settings.colorOvertime
+      function currentColor(state, layout) {
+        if (state.isOvertime) return layout.colorOvertime
         const activeCue = state.cues.find((c) => c.id === state.activeCueId)
         const warning1Sec = activeCue?.warning1Sec ?? 120
         const warning2Sec = activeCue?.warning2Sec ?? 30
-        if (state.remainingSec <= warning2Sec) return settings.colorWarning2
-        if (state.remainingSec <= warning1Sec) return settings.colorWarning1
-        return settings.colorNormal
+        if (state.remainingSec <= warning2Sec) return layout.colorWarning2
+        if (state.remainingSec <= warning1Sec) return layout.colorWarning1
+        return layout.colorNormal
       }
 
-      function currentAnimation(state) {
-        const { settings } = state
-        if (state.isOvertime) return settings.overtimeAnimation
+      function currentAnimation(state, layout) {
+        if (state.isOvertime) return layout.overtimeAnimation
         const activeCue = state.cues.find((c) => c.id === state.activeCueId)
         const warning1Sec = activeCue?.warning1Sec ?? 120
         const warning2Sec = activeCue?.warning2Sec ?? 30
-        if (state.remainingSec <= warning2Sec) return settings.warning2Animation
-        if (state.remainingSec <= warning1Sec) return settings.warning1Animation
+        if (state.remainingSec <= warning2Sec) return layout.warning2Animation
+        if (state.remainingSec <= warning1Sec) return layout.warning1Animation
         return 'none'
       }
 
@@ -188,10 +186,10 @@
       }, 1000)
 
       function draw(state) {
-        const { display } = state.settings
+        const display = state.settings.layouts.remote
         const activeCue = state.cues.find((c) => c.id === state.activeCueId)
-        const color = currentColor(state)
-        const animation = state.showWallClock ? 'none' : currentAnimation(state)
+        const color = currentColor(state, display)
+        const animation = state.showWallClock ? 'none' : currentAnimation(state, display)
         const now = new Date()
         const progressBar = display.progressBar
 
