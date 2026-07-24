@@ -204,8 +204,16 @@
 
       function displaySeconds(state) {
         const cue = state.cues.find((c) => c.id === state.activeCueId)
-        if (cue?.countUp) return cue.durationSec - state.remainingSec
+        if (cue?.timerType === 'countup') return cue.durationSec - state.remainingSec
         return state.remainingSec
+      }
+
+      function effectiveClockMode(state) {
+        if (state.showWallClock) return 'wallclock'
+        const cue = state.cues.find((c) => c.id === state.activeCueId)
+        if (cue?.timerType === 'clock') return 'wallclock'
+        if (cue?.timerType === 'empty') return 'empty'
+        return 'countdown'
       }
 
       function currentColor(state, layout) {
@@ -259,7 +267,8 @@
         const display = state.settings.layouts.remote
         const activeCue = state.cues.find((c) => c.id === state.activeCueId)
         const color = currentColor(state, display)
-        const animation = state.showWallClock ? 'none' : currentAnimation(state, display)
+        const clockMode = effectiveClockMode(state)
+        const animation = clockMode === 'wallclock' ? 'none' : currentAnimation(state, display)
         const now = new Date()
         const progressBar = display.progressBar
 
@@ -269,11 +278,11 @@
           html += `<div class="display-title" style="${positioned(display.title, `color:${display.title.color}; font-size:${display.title.fontVw}vmin;`)}">${escapeHtml(activeCue.title)}</div>`
         }
 
-        if (display.clock.visible) {
-          const clockText = state.showWallClock
+        if (display.clock.visible && clockMode !== 'empty') {
+          const clockText = clockMode === 'wallclock'
             ? formatTimeOfDay(now, display.clock.wallClockShowSeconds)
             : formatClockCustom(displaySeconds(state), display.clock)
-          const clockColor = state.showWallClock ? display.title.color : color
+          const clockColor = clockMode === 'wallclock' ? display.title.color : color
           const animClass = animation !== 'none' ? animation : ''
           html += `<div class="display-clock ${animClass}" style="${positioned(display.clock, `color:${clockColor}; font-size:${display.clock.fontVw}vmin;`)}">${clockText}</div>`
         }
