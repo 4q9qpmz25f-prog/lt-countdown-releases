@@ -202,6 +202,12 @@
         return parts.join(':')
       }
 
+      function displaySeconds(state) {
+        const cue = state.cues.find((c) => c.id === state.activeCueId)
+        if (cue?.countUp) return cue.durationSec - state.remainingSec
+        return state.remainingSec
+      }
+
       function currentColor(state, layout) {
         if (state.isOvertime) return layout.colorOvertime
         const activeCue = state.cues.find((c) => c.id === state.activeCueId)
@@ -266,7 +272,7 @@
         if (display.clock.visible) {
           const clockText = state.showWallClock
             ? formatTimeOfDay(now, display.clock.wallClockShowSeconds)
-            : formatClockCustom(state.remainingSec, display.clock)
+            : formatClockCustom(displaySeconds(state), display.clock)
           const clockColor = state.showWallClock ? display.title.color : color
           const animClass = animation !== 'none' ? animation : ''
           html += `<div class="display-clock ${animClass}" style="${positioned(display.clock, `color:${clockColor}; font-size:${display.clock.fontVw}vmin;`)}">${clockText}</div>`
